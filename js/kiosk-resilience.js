@@ -24,6 +24,8 @@
 
   var DEFAULTS = {
     // Where to poll, and how to identify this screen in the logs.
+    // feedUrl may be a function returning a URL, for incremental feeds whose
+    // query string depends on what the board has already seen.
     feedUrl: null,
     screenId: null,
 
@@ -54,9 +56,20 @@
     reloadCooldownKey: 'mk:lastRecoveryReload',
 
     // A tab whose timers have been suspended (or whose JS has wedged) will not
-    // tick. If wall-clock time since the last completed tick exceeds
+    // tick. If wall-clock time since the loop was last alive exceeds
     // wedgeFactor x interval, treat the tab as wedged and recover.
+    //
+    // "Alive" means a tick STARTED, not that one finished. A request still in
+    // flight is a healthy loop waiting on a slow server, and reloading it mid-
+    // request is exactly the wrong move during the outage that made it slow.
     wedgeFactor: 4,
+
+    // Hard ceiling on a single feed request. fetch() has no default timeout, so
+    // a connection that opens and then hangs - a half-dead server, a captive
+    // portal, a Pi that lost its route - would stall the loop forever behind
+    // the overlap guard. This is what actually makes the wedge watchdog a
+    // last resort rather than the first line of defence.
+    requestTimeoutMs: 20000,
 
     // Hard reload once a day at this local hour, so a tab leaking memory never
     // runs for weeks. Jittered across the hour so the fleet does not reload in
@@ -162,7 +175,7 @@
 
     var state = {
       lastSuccessAt: null,
-      lastTickAt: Date.now(),
+      lastLoopAt: Date.now(),
       consecutiveFailures: 0,
       currentDelay: o.intervalMs,
       stale: false,
@@ -209,7 +222,15 @@
         return;
       }
       var age = now - state.lastSuccessAt;
-      chipAge.textContent = ageText(age);
+      if (state.stale) {
+        // "just now" next to a red warning light is a contradiction a tired
+        // staff member has to decode. Name the actual last-good time instead -
+        // it is the one fact that makes the failure actionable.
+        chipAge.textContent = 'no update since ' + clockText(new Date(state.lastSuccessAt));
+      }
+      else {
+        chipAge.textContent = ageText(age);
+      }
       chip.className = 'mk-status mk-status--' + o.statusChipPosition + (state.stale ? ' is-stale' : ' is-ok');
     }
 
@@ -291,13 +312,17 @@
     }
 
     function feedUrlWithScreen() {
+      var url = typeof o.feedUrl === 'function' ? o.feedUrl() : o.feedUrl;
+      if (!url) {
+        throw new Error('feedUrl resolved to nothing');
+      }
       if (!o.screenId) {
-        return o.feedUrl;
+        return url;
       }
       // Ride along on a request we were making anyway, so the server can record
       // last-seen per screen without any extra polling traffic.
-      var sep = o.feedUrl.indexOf('?') === -1 ? '?' : '&';
-      return o.feedUrl + sep + 'screen=' + encodeURIComponent(o.screenId);
+      var sep = url.indexOf('?') === -1 ? '?' : '&';
+      return url + sep + 'screen=' + encodeURIComponent(o.screenId);
     }
 
     function handleFailure(kind, status, error) {
@@ -333,8 +358,20 @@
         return;
       }
       state.fetching = true;
+      // Stamp liveness on entry: the loop is running, whatever the server does
+      // next. Stamping only on completion made a slow feed indistinguishable
+      // from a dead tab, and the watchdog reloaded mid-request.
+      state.lastLoopAt = Date.now();
+
+      var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      var timeout = controller ? window.setTimeout(function () { controller.abort(); }, o.requestTimeoutMs) : null;
+
       try {
-        var response = await fetch(feedUrlWithScreen(), { cache: 'no-store' });
+        var fetchOptions = { cache: 'no-store' };
+        if (controller) {
+          fetchOptions.signal = controller.signal;
+        }
+        var response = await fetch(feedUrlWithScreen(), fetchOptions);
         if (!response.ok) {
           // The host answered. It is deploying, rate-limiting, or misconfigured
           // - all cases where the last good render is the best thing on screen.
@@ -360,8 +397,11 @@
         handleFailure('network', null, error);
       }
       finally {
+        if (timeout !== null) {
+          window.clearTimeout(timeout);
+        }
         state.fetching = false;
-        state.lastTickAt = Date.now();
+        state.lastLoopAt = Date.now();
         paintChip();
       }
     }
@@ -397,12 +437,17 @@
       paintChip();
 
       // Wedge detection: wall-clock time, not timer count, so it survives a tab
-      // whose timers were throttled or suspended by the browser.
-      var sinceTick = now - state.lastTickAt;
-      var wedgeAfter = Math.max(o.intervalMs, state.currentDelay) * o.wedgeFactor;
-      if (sinceTick > wedgeAfter) {
-        state.lastTickAt = now;
-        probeAndReload('tick loop wedged for ' + Math.round(sinceTick / 1000) + 's');
+      // whose timers were throttled or suspended by the browser. Never fires
+      // while a request is in flight - that is a live loop, not a wedged one,
+      // and requestTimeoutMs bounds how long it can stay that way.
+      if (!state.fetching) {
+        var sinceLoop = now - state.lastLoopAt;
+        var wedgeAfter = Math.max(o.intervalMs, state.currentDelay) * o.wedgeFactor
+          + o.requestTimeoutMs;
+        if (sinceLoop > wedgeAfter) {
+          state.lastLoopAt = now;
+          probeAndReload('poll loop stopped for ' + Math.round(sinceLoop / 1000) + 's');
+        }
       }
     }, 1000);
 

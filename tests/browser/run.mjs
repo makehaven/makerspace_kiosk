@@ -133,6 +133,32 @@ await withPage({ intervalMs: 200, jitterRatio: 0 }, async ({ page }) => {
     j.min >= 900 && j.max <= 1100 && j.uniq > 50, JSON.stringify(j));
 });
 
+// ---------------------------------------------------------------- scenario 8
+// A slow feed is a live loop, not a wedged tab. The watchdog must not reload
+// out from under an in-flight request - doing so during the outage that made
+// the server slow is precisely the wrong move.
+await withPage({ intervalMs: 200, jitterRatio: 0, wedgeFactor: 2, requestTimeoutMs: 5000, reloadCooldownMs: 0 }, async ({ page, ctl, navs }) => {
+  await page.waitForFunction('window.__renders >= 1', null, { timeout: 5000 });
+  await ctl('feed=slow');
+  await sleep(4000);
+  check('slow feed does not trip the wedge watchdog', navs() === 0, `${navs()} reloads`);
+  check('slow feed still renders when it answers',
+    (await page.evaluate('window.__renders')) >= 2, `${await page.evaluate('window.__renders')} renders`);
+});
+
+// ---------------------------------------------------------------- scenario 9
+// A connection that opens and never answers must not stall the loop forever
+// behind the overlap guard. requestTimeoutMs bounds it into a normal failure.
+await withPage({ intervalMs: 200, jitterRatio: 0, requestTimeoutMs: 700, reloadAfterFailures: 99, staleAfterMs: 900 }, async ({ page, ctl }) => {
+  await page.waitForFunction('window.__renders >= 1', null, { timeout: 5000 });
+  await ctl('feed=hang');
+  await sleep(3000);
+  const evs = await page.evaluate('window.__events');
+  check('hung request times out instead of stalling the loop',
+    evs.filter(e => e.startsWith('error:network:')).length >= 2, JSON.stringify(evs.slice(0, 4)));
+  check('hung request still surfaces as stale', evs.includes('stale'), JSON.stringify(evs.slice(-3)));
+});
+
 console.log('');
 const failed = results.filter(r => !r.pass);
 console.log(`${results.length - failed.length}/${results.length} checks passed`);

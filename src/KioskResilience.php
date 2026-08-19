@@ -85,8 +85,8 @@ class KioskResilience {
    *   kiosk with no recovery at all is the situation this module exists to end.
    */
   public function script(array $options, array $callbacks = []): string {
-    if (empty($options['feedUrl'])) {
-      throw new \InvalidArgumentException('KioskResilience::script() requires a feedUrl option.');
+    if (empty($options['feedUrl']) && empty($callbacks['feedUrl'])) {
+      throw new \InvalidArgumentException('KioskResilience::script() requires a feedUrl option (or a feedUrl callback for incremental feeds).');
     }
 
     $runtime = $this->asset('js/kiosk-resilience.js');

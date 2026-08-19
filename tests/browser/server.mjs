@@ -44,6 +44,17 @@ export function makeServer(opts) {
 
     if (url.pathname === '/feed') {
       if (modes.feed === 'drop') { req.socket.destroy(); return; }
+      // Opens the connection then never answers - the hang that fetch() has no
+      // default timeout for.
+      if (modes.feed === 'hang') { return; }
+      // Answers, but slowly enough to outlast the wedge window.
+      if (modes.feed === 'slow') {
+        setTimeout(() => {
+          res.writeHead(200, { 'content-type': 'application/json' })
+             .end(JSON.stringify({ payload: modes.payload }));
+        }, 1200);
+        return;
+      }
       if (modes.feed === '503') { res.writeHead(503).end('deploying'); return; }
       if (modes.feed === 'garbage') { res.writeHead(200, {'content-type':'application/json'}).end('not json'); return; }
       res.writeHead(200, { 'content-type': 'application/json' })

@@ -23,7 +23,8 @@ rendered identically to a live one.
 | **HTTP errors ≠ network errors** | A 5xx means the host is up and deploying. Hold the last good render and back off; never reload into a deploy. Only network-level failure suggests a wedged tab. |
 | **Exponential backoff** | Hammering a down site at 30s helps nobody, and Pantheon counts CDN hits toward billed traffic. |
 | **Jittered intervals** | Screens reboot on the same cron and poll on the same cadence, so they converge into a thundering herd. Everything is jittered ±10%. |
-| **Wedge watchdog** | Wall-clock, not timer-count, so it survives a tab whose timers the browser suspended. |
+| **Request timeout** | `fetch()` has no default timeout. A connection that opens and then hangs — half-dead server, captive portal, Pi that lost its route — would stall the loop forever behind the overlap guard. |
+| **Wedge watchdog** | Wall-clock, not timer-count, so it survives a tab whose timers the browser suspended. Measures whether a tick *started*, never whether one *finished*: a request in flight is a live loop waiting on a slow server, and reloading it mid-request is the wrong move during the very outage that made it slow. |
 | **Daily reload at a wall-clock hour** | A tab leaking memory should not run for weeks. Anchored to an hour rather than "24h after boot", which drifts into the middle of the day. |
 | **Resume on visibility/online** | A display woken from sleep or an HDMI switch polls at once instead of waiting out its delay. |
 
@@ -67,6 +68,7 @@ list and each option carries its rationale. The ones you will actually set:
 
 - `feedUrl` (required), `screenId`, `intervalMs`
 - `staleAfterMs` — defaults to 6× the interval (about five missed polls)
+- `requestTimeoutMs` — 20s by default; must stay well under `intervalMs × wedgeFactor`
 - `statusChip`, `statusChipPosition` — `bottom-right` by default
 - `dailyReloadHour` — `4` by default; `null` disables
 

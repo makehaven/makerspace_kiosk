@@ -61,10 +61,23 @@
  */
 .mk-status.is-stale {
   color: #fff;
-  background: rgba(176, 32, 32, 0.92);
-  font-size: 2.1vmin;
-  padding: 0.9vmin 1.5vmin;
+  background: rgba(176, 32, 32, 0.96);
+  /* Deliberately much larger than the healthy chip. A subtle indicator that
+     nobody reads from across the room is the same as no indicator at all, and
+     silent staleness is the failure this module exists to end. */
+  font-size: 3.2vmin;
+  font-weight: 700;
+  padding: 1.2vmin 2vmin;
+  gap: 1.2vmin;
+  box-shadow: 0 0 0 0.4vmin rgba(176, 32, 32, 0.35);
 }
+
+.mk-status.is-stale .mk-status__dot {
+  width: 1.8vmin;
+  height: 1.8vmin;
+}
+
+.mk-status.is-stale .mk-status__age { opacity: 1; }
 
 .mk-status.is-stale .mk-status__dot {
   animation: mk-status-pulse 1.4s ease-in-out infinite;
