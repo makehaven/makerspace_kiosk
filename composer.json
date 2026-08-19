@@ -1,0 +1,9 @@
+{
+  "name": "makehaven/makerspace_kiosk",
+  "type": "drupal-custom-module",
+  "description": "Shared resilience runtime for unattended kiosk and sign displays.",
+  "license": "GPL-2.0-or-later",
+  "require": {
+    "drupal/core": "^11"
+  }
+}

@@ -1,0 +1,10 @@
+# For any future display rendered through a render array rather than a raw
+# Response. The existing displays inline the same assets via the
+# makerspace_kiosk.resilience service instead - see README.
+resilience:
+  version: 1.x
+  js:
+    js/kiosk-resilience.js: { preprocess: false }
+  css:
+    theme:
+      css/kiosk-status.css: {}
