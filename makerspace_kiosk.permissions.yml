@@ -1,0 +1,3 @@
+administer kiosk screens:
+  title: 'Assign screens'
+  description: 'Choose what each physical screen (TV or panel) in the building shows.'

@@ -2,3 +2,6 @@ services:
   makerspace_kiosk.resilience:
     class: Drupal\makerspace_kiosk\KioskResilience
     arguments: ['@extension.list.module', '@logger.factory']
+  makerspace_kiosk.screen_registry:
+    class: Drupal\makerspace_kiosk\ScreenRegistry
+    arguments: ['@state', '@datetime.time']

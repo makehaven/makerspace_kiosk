@@ -82,6 +82,38 @@ without a single extra poll. Nothing consumes this yet — it is the hook for
 "which sign is dead?" monitoring without adding traffic to a site already over
 its Pantheon allowance.
 
+## Screen registry: which TV shows what
+
+Every screen Pi is built from one image (repo `makerspace-screen`) and knows
+nothing about what it should show. It prints its **Screen ID** (last six hex
+digits of its hardware serial) on the TV, and asks this site:
+
+```
+GET /display/screen/{ID}/config?agent=<version>
+-> {"assigned": true, "id": "3F9A2C", "label": "Main TV", "url": "/display/slideshow", "rotation": 0}
+-> {"assigned": false, "id": "3F9A2C"}
+```
+
+Staff assign screens at **`/admin/config/system/screens`** (permission
+*Assign screens*). A screen that has asked appears there as *new* on its own,
+so the person at the TV only has to read the ID out.
+
+- **State, not config.** Assignments are changed on live by staff. As config
+  they would be overwritten by the next config deploy and silently re-point
+  every TV in the building.
+- **Anonymous and uncacheable.** The Pi holds no credentials; the answer only
+  names a public display page. The response is `no-store, private` and kills
+  the page cache, so a change reaches the screen on its next ask.
+- **Cheap.** A screen asks at boot (nightly 3am), on a pushed `reload`, every
+  6 hours, and once a minute only during its first 30 minutes while unassigned.
+- **Bounded.** IDs must be six hex characters; at most 30 never-assigned IDs
+  are remembered, and assigned screens are never evicted.
+- URLs must be a site path (`/display/...`) or `https://`; anything else is
+  refused rather than handed to an unattended browser.
+
+A screen picks up a change at its next ask. To apply it at once, push a
+`reload` with `tools/mhscreen-cmd <ID> reload` from the `makerspace-screen` repo.
+
 ## Tests
 
 `tests/browser/` drives the real runtime in a real browser against a

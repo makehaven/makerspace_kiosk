@@ -1,0 +1,18 @@
+makerspace_kiosk.screen_config:
+  path: '/display/screen/{screen_id}/config'
+  defaults:
+    _controller: '\Drupal\makerspace_kiosk\Controller\ScreenController::screenConfig'
+  methods: [GET]
+  requirements:
+    # The Pi holds no credentials; the answer is only which public page to open.
+    _access: 'TRUE'
+  options:
+    no_cache: TRUE
+
+makerspace_kiosk.screens:
+  path: '/admin/config/system/screens'
+  defaults:
+    _form: '\Drupal\makerspace_kiosk\Form\ScreensForm'
+    _title: 'Screens'
+  requirements:
+    _permission: 'administer kiosk screens'

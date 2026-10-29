@@ -1,5 +1,5 @@
 name: 'Makerspace Kiosk'
 type: module
-description: 'Shared resilience runtime for unattended kiosk and sign displays: jittered polling, failure backoff, visible staleness, probe-gated recovery.'
+description: 'Unattended screens: the shared resilience runtime for kiosk and sign pages, and the registry of which physical screen shows which display.'
 package: Makerspace
 core_version_requirement: ^11
