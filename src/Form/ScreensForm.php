@@ -152,7 +152,7 @@ class ScreensForm extends FormBase {
     $form['displays'] = [
       '#type' => 'details',
       '#title' => $this->t('Pages a screen can show'),
-      '#description' => $this->t('Any page on this site (starting with /) or an https:// address. Some displays need their code word on the end; see each display\'s settings.'),
+      '#description' => $this->t('Any page on this site (starting with /), an https:// address, or an http:// address on the building network (a private IP, such as the access box). Some displays need their code word on the end; see each display\'s settings.'),
       'list' => [
         '#theme' => 'item_list',
         '#items' => $this->knownDisplays(),
@@ -174,7 +174,7 @@ class ScreensForm extends FormBase {
     foreach ($form_state->getValue('screens') ?: [] as $id => $row) {
       $url = trim($row['url'] ?? '');
       if ($url !== '' && empty($row['forget']) && !ScreenRegistry::isValidUrl($url)) {
-        $form_state->setErrorByName("screens][$id][url", $this->t('Screen @id: use a site path starting with / or an https:// address.', ['@id' => $id]));
+        $form_state->setErrorByName("screens][$id][url", $this->t('Screen @id: use a site path starting with /, an https:// address, or http:// to a private IP on the building network.', ['@id' => $id]));
       }
     }
     $add_id = trim((string) $form_state->getValue('add_id'));
@@ -183,7 +183,7 @@ class ScreensForm extends FormBase {
         $form_state->setErrorByName('add_id', $this->t('A Screen ID is six characters, 0-9 and A-F.'));
       }
       if (!ScreenRegistry::isValidUrl((string) $form_state->getValue('add_url'))) {
-        $form_state->setErrorByName('add_url', $this->t('Use a site path starting with / or an https:// address.'));
+        $form_state->setErrorByName('add_url', $this->t('Use a site path starting with /, an https:// address, or http:// to a private IP on the building network.'));
       }
     }
   }
@@ -232,7 +232,8 @@ class ScreensForm extends FormBase {
       $items[] = '/display/slideshow/screen/' . $key . ' — ' . $this->t('slideshow profile "@key"', ['@key' => $key]);
     }
     $items[] = '/display/reservations/day — ' . $this->t("today's reservations");
-    $items[] = '/display/access-request/{code word} — ' . $this->t('member faces');
+    $items[] = 'http://{access box IP}/display/presence — ' . $this->t('member faces, served from the building network (no website traffic)');
+    $items[] = '/display/access-request/{code word} — ' . $this->t('member faces, from the website');
     $items[] = '/facilitator-display/display/{code word} — ' . $this->t('facilitator board');
     $items[] = '/display/tasks/{code word} — ' . $this->t('tasks board');
     return $items;

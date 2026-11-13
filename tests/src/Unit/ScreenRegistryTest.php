@@ -50,6 +50,12 @@ class ScreenRegistryTest extends UnitTestCase {
     $this->assertTrue(ScreenRegistry::isValidUrl('https://example.org/board'));
     $this->assertFalse(ScreenRegistry::isValidUrl('//evil.example/x'));
     $this->assertFalse(ScreenRegistry::isValidUrl('http://example.org'));
+    // The access box serves boards on the LAN over plain http.
+    $this->assertTrue(ScreenRegistry::isValidUrl('http://192.168.23.33/display/presence'));
+    $this->assertTrue(ScreenRegistry::isValidUrl('http://10.0.0.5:8080/board'));
+    $this->assertFalse(ScreenRegistry::isValidUrl('http://8.8.8.8/board'));
+    $this->assertFalse(ScreenRegistry::isValidUrl('http://192.168.1.1@evil.example/x'));
+    $this->assertFalse(ScreenRegistry::isValidUrl('http://127.0.0.1/x'));
     $this->assertFalse(ScreenRegistry::isValidUrl('javascript:alert(1)'));
     $this->assertFalse(ScreenRegistry::isValidUrl('/display/a b'));
     $this->assertFalse(ScreenRegistry::isValidUrl(''));

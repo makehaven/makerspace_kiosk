@@ -61,8 +61,11 @@ class ScreenRegistry {
   /**
    * Whether a display address is one a screen may be pointed at.
    *
-   * A site path, or an https URL. Anything else (javascript:, file:, plain
-   * http) is refused rather than handed to an unattended browser.
+   * A site path, an https URL, or plain http to a private LAN address given
+   * as an IP (the access box serves boards to the building's screens from
+   * the LAN, so they cost the website nothing). Anything else (javascript:,
+   * file:, plain http to the internet or to a hostname) is refused rather
+   * than handed to an unattended browser.
    */
   public static function isValidUrl(string $url): bool {
     $url = trim($url);
@@ -72,7 +75,18 @@ class ScreenRegistry {
     if (str_starts_with($url, '/') && !str_starts_with($url, '//')) {
       return TRUE;
     }
-    return str_starts_with($url, 'https://') && filter_var($url, FILTER_VALIDATE_URL) !== FALSE;
+    if (filter_var($url, FILTER_VALIDATE_URL) === FALSE) {
+      return FALSE;
+    }
+    if (str_starts_with($url, 'https://')) {
+      return TRUE;
+    }
+    if (str_starts_with($url, 'http://')) {
+      $host = (string) parse_url($url, PHP_URL_HOST);
+      return filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== FALSE
+        && filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE) === FALSE;
+    }
+    return FALSE;
   }
 
   /**
